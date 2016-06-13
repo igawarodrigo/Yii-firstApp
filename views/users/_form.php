@@ -2,6 +2,7 @@
 
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
+use yii\helpers\ArrayHelper;
 
 /* @var $this yii\web\View */
 /* @var $model app\models\User */
@@ -22,10 +23,13 @@ use yii\widgets\ActiveForm;
 
     <?= $form->field($model, 'password')->textInput(['maxlength' => true])->passwordInput() ?>
 
+    <?= $form->field($role, 'name')->dropDownList(
+       ArrayHelper::map($roles, 'name', 'name')
+    ) ?>
+
     <div class="form-group">
         <?= Html::submitButton($model->isNewRecord ? 'Create' : 'Update', ['class' => $model->isNewRecord ? 'btn btn-success' : 'btn btn-primary']) ?>
     </div>
 
     <?php ActiveForm::end(); ?>
-
 </div>

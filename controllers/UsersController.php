@@ -4,7 +4,9 @@ namespace app\controllers;
 
 use Yii;
 use app\models\User;
+use app\models\AuthItem;
 use app\models\SearchUser;
+use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -26,6 +28,16 @@ class UsersController extends Controller
                     'delete' => ['POST'],
                 ],
             ],
+            'access' => [
+              'class' => AccessControl::className(),
+              'rules' => [
+                [
+                  'allow' => true,
+                  'actions' => ['index', 'create', 'view', 'update', 'delete'],
+                  'roles' => ['admin'],
+                ],
+              ],
+            ]
         ];
     }
 
@@ -64,18 +76,33 @@ class UsersController extends Controller
     public function actionCreate()
     {
         $model = new User();
-
-        // $model->load(Yii::$app->request->post());
-
-        // var_dump($model->attributes);
-
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        $role = new AuthItem;
+        if ($model->load(Yii::$app->request->post()) && $model->save() && $role->load(Yii::$app->request->post())) {
+            $this->assignRoleToUser($role->name, $model->getId());
             return $this->redirect(['view', 'id' => $model->id]);
         } else {
+            $roles = $this->getPossibleRoles();
             return $this->render('create', [
                 'model' => $model,
+                'roles' => $roles,
+                'role' => $role,
             ]);
         }
+    }
+
+    public function assignRoleToUser($roleName, $userId)
+    {
+      $auth = Yii::$app->authManager;
+      $authorRole = $auth->getRole($roleName);
+      $auth->assign($authorRole, $userId);
+    }
+
+    public function getPossibleRoles(){
+      return Yii::$app->authManager->getRoles();
+    }
+
+    public function getUserRole($user_id){
+      return key(Yii::$app->authManager->getRolesByUser($user_id));
     }
 
     /**
@@ -87,14 +114,29 @@ class UsersController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
+        $role = new AuthItem;
+        $role->load(Yii::$app->request->post());
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
+            $this->removeAllUserRoles($id);
+            $this->assignRoleToUser($role->name, $id);
+
             return $this->redirect(['view', 'id' => $model->id]);
         } else {
+            $role = AuthItem::findByName($this->getUserRole($id))->one();
+            $roles = $this->getPossibleRoles();
+            
             return $this->render('update', [
                 'model' => $model,
+                'roles' => $roles,
+                'role' => $role
             ]);
         }
+    }
+
+    public function removeAllUserRoles($id)
+    {
+      Yii::$app->authManager->revokeAll($id);
     }
 
     /**
@@ -105,8 +147,8 @@ class UsersController extends Controller
      */
     public function actionDelete($id)
     {
+        $this->removeAllUserRoles($id);
         $this->findModel($id)->delete();
-
         return $this->redirect(['index']);
     }
 
