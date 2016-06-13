@@ -14,6 +14,8 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
     public function rules()
     {
       return [
+        [['full_name', 'password', 'username'], 'string'],
+        [['birth_date'],'date'],
         [['email'],'email'],
         [['username'],'unique'],
       ];
@@ -89,7 +91,20 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
      */
     public function validatePassword($password)
     {
-        return Yii::$app->getSecurity()
-        ->validatePassword($password, $this->password);
+      return Yii::$app->getSecurity()
+      ->validatePassword($password, $this->password);
     }
+
+    public function beforeSave($insert)
+    {
+      if (parent::beforeSave($insert)) {
+        $this->password = Yii::$app->getSecurity()
+        ->generatePasswordHash($this->password);
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+
 }
